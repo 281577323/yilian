@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>成人依恋量表测评（AAS-1996修订版）光之泉定制</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .question {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .options {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .option label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        #result {
+            display: none;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 8px;
+        }
+        .reverse {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>成人依恋量表测评（AAS-1996修订版）</h1>
+    
+    <div id="instructions">
+        <h2>指导语</h2>
+        <p>请仔细阅读下列语句，根据您在所有亲密关系（包括过去和现在）中的<b>通常感受</b>作答。若您从未有过情感关系，请按照您<b>认为可能会有的感受</b>来回答。</p>
+    </div>
+
+    <form id="aasTest">
+        <h2>题目列表（请选择1-5分）</h2>
+        <div id="questions"></div>
+        <button type="button" onclick="calculateScore()">提交答卷</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        // 题目数据
+        const questions = [
+            { text: "1. 我发现与人亲近比较容易", reverse: false },
+            { text: "2. 我发现要我去依赖别人很困难", reverse: true },
+            { text: "3. 我时常担心情侣并不真心爱我", reverse: false },
+            { text: "4. 我发现别人并不愿像我希望的那样亲近我", reverse: false },
+            { text: "5. 能依赖别人让我感到很舒服", reverse: false },
+            { text: "6. 我不在乎别人太亲近我", reverse: false },
+            { text: "7. 我发现当我需要别人帮助时，没人会帮我", reverse: true },
+            { text: "8. 和别人亲近使我感到有些不舒服", reverse: true },
+            { text: "9. 我时常担心情侣不想和我在一起", reverse: false },
+            { text: "10. 当我对别人表达我的情感时，我害怕他们与我的感觉会不一样", reverse: false },
+            { text: "11. 我时常怀疑情侣是否真正关心我", reverse: false },
+            { text: "12. 我对别人建立亲密的关系感到很舒服", reverse: false },
+            { text: "13. 当有人在情感上太亲近我时，我感到不舒服", reverse: true },
+            { text: "14. 我知道当我需要别人帮助时，总有人会帮我", reverse: false },
+            { text: "15. 我想与人亲近，但担心自己会受到伤害", reverse: false },
+            { text: "16. 我发现我很难完全信赖别人", reverse: true },
+            { text: "17. 情侣想要我在情感上更亲近一些，这常使我感到不舒服", reverse: true },
+            { text: "18. 我不能肯定，在我需要时，总找得到可以依赖的人", reverse: true }
+        ];
+
+        // 初始化题目
+        function initQuestions() {
+            const container = document.getElementById('questions');
+            questions.forEach((q, index) => {
+                const div = document.createElement('div');
+                div.className = 'question';
+                div.innerHTML = `
+                    <div>${q.text}${q.reverse ? ' <span class="reverse">（反向计分）</span>' : ''}</div>
+                    <div class="options">
+                        ${[1,2,3,4,5].map(n => `
+                            <label>
+                                <input type="radio" name="q${index+1}" value="${n}" required>
+                                ${n}
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 计算分数
+        function calculateScore() {
+            // 验证是否完成所有题目
+            const inputs = document.querySelectorAll('input[type="radio"]:checked');
+            if (inputs.length !== 18) {
+                alert("请完成所有题目后再提交！");
+                return;
+            }
+
+            // 处理得分
+            const reverseQuestions = [2,7,8,13,16,17,18];
+            const scores = Array.from(inputs).map(input => {
+                const qNumber = parseInt(input.name.substring(1));
+                const isReverse = reverseQuestions.includes(qNumber);
+                return isReverse ? 6 - parseInt(input.value) : parseInt(input.value);
+            });
+
+            // 维度计算
+            const dimensions = {
+                亲近: [0,5,7,11,12,16].map(i => scores[i]),
+                依赖: [1,4,6,13,15,17].map(i => scores[i]),
+                焦虑: [2,3,8,9,10,14].map(i => scores[i])
+            };
+
+            // 计算均值
+            const result = {};
+            Object.entries(dimensions).forEach(([name, values]) => {
+                result[name] = values.reduce((a,b) => a + b, 0) / values.length;
+            });
+            result.复合维度 = (result.亲近 * 6 + result.依赖 * 6) / 12;
+
+            // 判断类型
+            let type = '';
+            if (result.复合维度 >= 3) {
+                type = result.焦虑 < 3 ? '安全型' : '迷恋型';
+            } else {
+                type = result.焦虑 < 3 ? '回避型' : '恐惧型';
+            }
+
+            // 显示结果
+            showResult(result, type);
+        }
+
+        function showResult(scores, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <h3>测评结果</h3>
+                <p>亲近维度均分：${scores.亲近.toFixed(2)}</p>
+                <p>依赖维度均分：${scores.依赖.toFixed(2)}</p>
+                <p>焦虑维度均分：${scores.焦虑.toFixed(2)}</p>
+                <p>复合维度均分：${scores.复合维度.toFixed(2)}</p>
+                <h4 style="color:#007bff">您的依恋类型：${type}</h4>
+                <hr>
+                <h4>类型解释：</h4>
+                <ul>
+                    <li>安全型：能平衡亲密与独立需求</li>
+                    <li>迷恋型：过度依赖，害怕被抛弃</li>
+                    <li>回避型：情感疏离，回避亲密关系</li>
+                    <li>恐惧型：既渴望又恐惧亲密关系</li>
+                </ul>
+            `;
+            resultDiv.style.display = 'block';
+        }
+
+        // 初始化
+        initQuestions();
+    </script>
+</body>
+</html>
